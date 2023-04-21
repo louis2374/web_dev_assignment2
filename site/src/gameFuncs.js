@@ -3,6 +3,7 @@ const context = canvas.getContext('2d');
 const simSize = 100;
 const viewport = document.documentElement;
 const circleRadius = 40;
+const lineWidth = 4;
 
 let userX = canvas.height / 2;
 let userY = canvas.width / 2;
@@ -17,7 +18,7 @@ function init()
     resizeCanvas();
     initEvents();
     initObjects();
-    setInterval(draw, 10);
+    setInterval(drawCursor, 10);
 }
 
 function scaleSize(num)
@@ -48,38 +49,41 @@ function resizeCanvas()
 
 
 
-function draw()
+function drawCursor()
 {
     //clear canvas
     context.clearRect(0, 0, canvas.width, canvas.height);
-
-    //context.fillStyle = 'red';
-    //context.fillRect(scaleSize(userX), scaleSize(userY), scaleSize(50), scaleSize(50));
-  
-    //draw circle
-
-
-
-
-    //get mouse pos
     
+    //height = width
     let h = canvas.height / 2;
 
+    //calc hypotenuse and opposite
     let hyp = Math.sqrt(Math.pow(h - mouseX, 2) + Math.pow(h - mouseY, 2));
-    let op = Math.abs(mouseY - h);
-
-    if(mouseX < op) op = -op;
+    let op  = Math.abs(mouseY - h);
     
+    //get angle
     let angle = Math.asin(op / hyp);
 
-    console.log(op)
+    //angle must be flipped for each corner as the angle is calculated using absolute values
+    if (mouseX < h) angle = Math.PI - angle;
+    if (mouseY < h) angle = 2 * Math.PI - angle;
 
+    //draw the arc
+    //all sizes are scaled
 
-
+    //cursor area
     context.beginPath();
-    context.arc(canvas.width / 2, canvas.height / 2, scaleSize(circleRadius), angle + 3, angle - 3);
+    context.lineWidth = scaleSize(lineWidth);
+    context.strokeStyle = "#aaa";
+    context.arc(canvas.width / 2, canvas.height / 2, scaleSize(circleRadius), angle + circleCover * Math.PI * 2, angle - circleCover * Math.PI * 2);
     context.stroke();
 
+    //non cursor area
+    context.beginPath();
+    context.lineWidth = scaleSize(lineWidth);
+    context.strokeStyle = "#111";
+    context.arc(canvas.width / 2, canvas.height / 2, scaleSize(circleRadius), angle - circleCover * Math.PI * 2, angle + circleCover * Math.PI * 2);
+    context.stroke();
 }
 
 function keyboardInput(e)
