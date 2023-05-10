@@ -1,33 +1,20 @@
-const canvas = document.getElementById('canvasFrame');
-const context = canvas.getContext('2d');
-const simSize = 1000;
-const viewport = document.documentElement;
-const circleRadius = simSize * 0.3;
-const lineWidth = 4;
-const updateSpeed = 10; //ms
+const canvas = document.getElementById('canvasFrame'); //canvas
+const context = canvas.getContext('2d'); //canvas context
+const simSize = 1000; //simulated size of the game, the games physics, positiona and size are based off this, and scaled to match the canvas size
+const viewport = document.documentElement; //viewport to make code a lil neater
+const circleRadius = simSize * 0.3; //radius of circle
+const lineWidth = 4; //width of the circle
+const updateSpeed = 10; //ticks per second, higher value will cause more jittery gameplay, however ball speed should be preserved.
 
 var userX = canvas.height / 2;
 var userY = canvas.width / 2;
-var mouseX = 0;
-var mouseY = 0;
-var circleCover = 0.03;
-var circleSection = {min: 0, max: 0};
-var balls = [
-    {
-        radius: 10,
-        pos: {x: simSize / 3, y: simSize / 3},
-        velocity: {x: 40, y: 40},
-        color: "#2f2",
-        bounced: false
-    },
-    {
-        radius: 10,
-        pos: {x: simSize / 5 * 3, y: simSize / 3},
-        velocity: {x: 40, y: 40},
-        color: "#2a2",
-        bounced: false
-    }
-];
+var mouseX = 0; //mouse pos
+var mouseY = 0; //mouse pso
+var circleCover = 0.03; //percentage of the circle the cursor covers
+var circleSection = {min: 0, max: 0}; //cursor
+var balls = []; //all balls
+var spawnRate = 0; //how often a ball is spawned in ms
+var ballSpawning = true; //determins whether balls should spawn
 
 var points = [
 ]
@@ -46,6 +33,7 @@ function init()
     resizeCanvas();
     initEvents();
     setInterval(mainLoop, updateSpeed);
+    spawnBalls();
 }
 
 //loop that carries out all drawing / login processes
@@ -57,8 +45,44 @@ function mainLoop()
     ballsLogic();
 }
 
+function spawnBalls()
+{
+    //if no balls should spawn, dont modify spawn rate and just return this function
+    if(!ballSpawning)
+    {
+        setTimeout(spawnBalls, spawnRate);
+        return;
+    }
+
+    //choose random angle
+    let angle = (Math.PI * 2) * Math.random();
+    let speed = 100;
+
+    console.log(angle)
+    //starting vector is moving at ball speed directly upwards.
+    let velocity = {x: 0, y: speed};
+
+    //rotate this vector by angle
+    velocity.x = velocity.x * Math.cos(angle) - velocity.y * Math.sin(angle);
+    velocity.y = velocity.x * Math.sin(angle) + velocity.y * Math.cos(angle);
+
+    balls.push(
+    {
+        radius: 10,
+        pos: {x: simSize / 2, y: simSize / 2},
+        velocity: {x: velocity.x, y: velocity.y},
+        color: "#2a2",
+        bounced: false
+    });
+
+    //reduces spawn rate to make game harder over timer
+    //should change this as its almost unnoticable, simple and boring
+    spawnRate--;
+    setTimeout(spawnBalls, spawnRate);
+}
+
 function ballsLogic() {
-    balls.forEach(ball => {
+    balls.forEach((ball, index) => {
       //move ball
       //velocity should be in pixels per second at 100% simsize
       //im not measuring delta time so this is only roughly accurate
@@ -79,10 +103,18 @@ function ballsLogic() {
         // do something
       }
   
+      //hits player cursor
       //if angle is within circle section, and side of it is touching side of main circle
       if (dist >= circleRadius - ball.radius - lineWidth / 2 && ballAngle < circleSection.max && ballAngle > circleSection.min) {
+
+        //if blocked by cursor, delete the ball
+        balls.splice(index , 1);
+
+        //bounce is disabled atm, its a little buggy
+        var bounce = false;
+
         //only bounce if it is within the circle
-        if (dist - 4 < circleRadius - ball.radius - lineWidth/2) {
+        if (dist - 4 < circleRadius - ball.radius - lineWidth/2 && bounce) {
             //bounce
     
             let perpendicularAngle = ballAngle - Math.PI;
