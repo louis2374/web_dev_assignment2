@@ -1,3 +1,4 @@
+/*
 const canvas = document.getElementById('canvasFrame'); //canvas
 const context = canvas.getContext('2d'); //canvas context
 const simSize = 1000; //simulated size of the game, the games physics, positiona and size are based off this, and scaled to match the canvas size
@@ -13,36 +14,49 @@ var mouseY = 0; //mouse pso
 var circleCover = 0.03; //percentage of the circle the cursor covers
 var circleSection = {min: 0, max: 0}; //cursor
 var balls = []; //all balls
-var spawnRate = 0; //how often a ball is spawned in ms
+var spawnRate = 1000; //how often a ball is spawned in ms
 var ballSpawning = true; //determins whether balls should spawn
 
 var points = [
 ]
-
-/*bounce point = 
-{
-    radius: 1,
-    x: 20,
-    y: 30
-}
 */
-
-
 function init()
 {
+    //load heart
+    heartImg.src = "../images/heart.png";
+
+
     resizeCanvas();
     initEvents();
     setInterval(mainLoop, updateSpeed);
     spawnBalls();
+
+    
+}
+
+function initEvents()
+{
+    //init keyboard input
+    document.addEventListener('keydown', keyboardInput);
+    window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("mousemove", function(e) {mouseX = e.clientX; mouseY = e.clientY;})
 }
 
 //loop that carries out all drawing / login processes
 function mainLoop()
 {
+    //clear
     context.clearRect(0, 0, canvas.width, canvas.height);
+    //draw main circle
+    //non cursor area
+    drawCircle(lineWidth, "#fdd", simSize/2, simSize/2, circleRadius, 0, Math.PI*2, false)
+
     drawCursor();
     drawBalls();
     ballsLogic();
+    drawHealth();
+    drawTurrets();
+    turretLogic();
 }
 
 function spawnBalls()
@@ -58,7 +72,6 @@ function spawnBalls()
     let angle = (Math.PI * 2) * Math.random();
     let speed = 100;
 
-    console.log(angle)
     //starting vector is moving at ball speed directly upwards.
     let velocity = {x: 0, y: speed};
 
@@ -75,85 +88,72 @@ function spawnBalls()
         bounced: false
     });
 
+    console.log(Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y))
+
     //reduces spawn rate to make game harder over timer
     //should change this as its almost unnoticable, simple and boring
     spawnRate--;
     setTimeout(spawnBalls, spawnRate);
 }
 
-function ballsLogic() {
+function ballsLogic()
+{
     balls.forEach((ball, index) => {
-      //move ball
-      //velocity should be in pixels per second at 100% simsize
-      //im not measuring delta time so this is only roughly accurate
-      ball.pos.x += ball.velocity.x * updateSpeed / 1000;
-      ball.pos.y += ball.velocity.y * updateSpeed / 1000;
+        //move ball
+        //velocity should be in pixels per second at 100% simsize
+        //im not measuring delta time so this is only roughly accurate
+        ball.pos.x += ball.velocity.x * updateSpeed / 1000;
+        ball.pos.y += ball.velocity.y * updateSpeed / 1000;
+
+        //distance to circle center
+        let dist = Math.sqrt(Math.pow(ball.pos.x - simSize/2, 2) + Math.pow(ball.pos.y - simSize/2, 2));
+    
+        //get angle of ball to circle center
+        let ballAngle = Math.atan2(ball.pos.y - simSize/2, ball.pos.x - simSize/2);
   
-      //if it has bounced recently, dont bounce
-      if(ball.bounced) return;
+        //if ball was blocked
+        let blocked = false;
 
-      //distance to circle center
-      let dist = Math.sqrt(Math.pow(ball.pos.x - simSize/2, 2) + Math.pow(ball.pos.y - simSize/2, 2));
-  
-      //get angle of ball to circle center
-      let ballAngle = Math.atan2(ball.pos.y - simSize/2, ball.pos.x - simSize/2);
-  
-      //if ball missed the cursor
-      if (dist > circleRadius + 2) {
-        // do something
-      }
-  
-      //hits player cursor
-      //if angle is within circle section, and side of it is touching side of main circle
-      if (dist >= circleRadius - ball.radius - lineWidth / 2 && ballAngle < circleSection.max && ballAngle > circleSection.min) {
-
-        //if blocked by cursor, delete the ball
-        balls.splice(index , 1);
-
-        //bounce is disabled atm, its a little buggy
-        var bounce = false;
-
-        //only bounce if it is within the circle
-        if (dist - 4 < circleRadius - ball.radius - lineWidth/2 && bounce) {
-            //bounce
-    
-            let perpendicularAngle = ballAngle - Math.PI;
-    
-            let normalX = Math.cos(perpendicularAngle);
-            let normalY = Math.sin(perpendicularAngle);
-    
-            //dot product
-            //normalise ball vector
-            let magnitude = Math.sqrt(Math.pow(ball.velocity.x, 2) + Math.pow(ball.velocity.y,2));
-    
-            let normalBallX = ball.velocity.x / magnitude;
-            let normalBallY = ball.velocity.y / magnitude;
-    
-            let dot = normalBallX * normalX + normalBallY * normalY;
-    
-            //angle of incidence
-            let incidence = Math.acos(dot);
-    
-            let reflection = 2 * incidence - Math.PI + ballAngle;
-    
-            let newVelX = Math.cos(reflection) * magnitude;
-            let newVelY = Math.sin(reflection) * magnitude;
-    
-            ball.velocity.x = newVelX;
-            ball.velocity.y = newVelY;
-
-            //set timeout so it wont bounce for a period of time, stops many errors as this code will get
-            //called multiple times without it
-            ball.bounced = true;
-            setTimeout(() => {
-                ball.bounced = false;
-              }, 100);
+        //check for cursor
+        if (dist >= circleRadius - ball.radius - lineWidth / 2 &&
+            dist - 3 <= circleRadius - ball.radius - lineWidth / 2)
+        {
+            //check if cursor blocks the ball
+            //if it does, set it to blocked
+            if(ballAngle < circleSection.max && ballAngle > circleSection.min)
+            {
+                blocked = true;
+            }
         }
-    }
+
+        //check for turrets
+        turrets.forEach(turret =>
+            {
+                //check for cursor
+                if (dist >= (circleRadius * turret.distance) - ball.radius - lineWidth / 2 &&
+                    dist - 3 <= (circleRadius * turret.distance) - ball.radius - lineWidth / 2)
+                {
+
+                    //get turret sections
+                    let turretSection = {min: turret.angle - turret.cover/2 * Math.PI * 2, max: turret.angle + turret.cover/2 * Math.PI * 2};
+
+                    //check if turret blocks the ball
+                    //if it set it to blocked
+                    if(ballAngle < turretSection.max && ballAngle > turretSection.min)
+                    {
+                        blocked = true;
+                    }
+                }
+            })
+        
+            if(blocked)
+            {
+                balls.splice(index, 1);
+            }
+
     
     });
-  }
-  
+}
 
 //the game is simulated with a 1000 x 1000 canvas, and all properties of the object are scaled
 //when drawn, so that the game is drawn at full resolution with correct scaling regardless of canvas actual size
@@ -190,8 +190,6 @@ function drawCursor()
 
     //draw the arc
     //all sizes are scaled
-    //non cursor area
-    drawCircle(lineWidth, "#ddd", simSize/2, simSize/2, circleRadius, circleSection.max, circleSection.min, false)
     //cursor area
     drawCircle(lineWidth, "#111", simSize/2, simSize/2, circleRadius, circleSection.min, circleSection.max, false);
 }
@@ -203,22 +201,61 @@ function drawBalls()
     {
         drawCircle(lineWidth, ball.color, ball.pos.x, ball.pos.y, ball.radius, 0, Math.PI * 2, true);
     })
-
-    points.forEach(point => {
-        drawCircle(2, "#aaa", point.x, point.y, 4, 0, Math.PI * 2, false);
-    })
 }
 
 function keyboardInput(e)
 {
-    //if(e.key == "a") ballPosition = {x:simSize/2,y:simSize/2}
-    //console.log(e)
+    if(e.key == "a") addTurret(10, 0.4, 0.5, "#f00");
+
 }
 
-function initEvents()
+function drawHealth()
 {
-    //init keyboard input
-    document.addEventListener('keydown', keyboardInput);
-    window.addEventListener("resize", resizeCanvas);
-    window.addEventListener("mousemove", function(e) {mouseX = e.clientX; mouseY = e.clientY;})
+    let width = simSize / 10;
+
+    //for number of health, print a heart, and move it right by the width of the img
+    for(let i = 0; i < playerData.health; i++)
+        context.drawImage(heartImg, scaleSize(width * i), scaleSize(0), scaleSize(width), scaleSize(width));
+}
+
+function drawTurrets()
+{
+    turrets.forEach(turret =>
+        {
+            //height = width
+            let h = canvas.height / 2;
+
+            //set turret section
+            let turretSection = {min: turret.angle - turret.cover/2 * Math.PI * 2, max: turret.angle + turret.cover/2 * Math.PI * 2};
+
+            //draw the arc
+            drawCircle(lineWidth, "#111", simSize/2, simSize/2, circleRadius * turret.distance, turretSection.min, turretSection.max, false);
+        })
+}
+
+function turretLogic()
+{
+    turrets.forEach(turret =>
+        {
+            //get increment depending on direction
+            let increment = turret.direction ? turret.speed * 0.001 : turret.speed * -0.001;
+            turret.angle += (increment);
+        })
+}
+
+function addTurret(speed, cover, distance, color)
+{
+    turrets.push(
+        {
+            speed: speed,
+            cover: cover,
+            color: color,
+            //percentage of the main circle radius
+            distance: distance,
+            angle: Math.random() * (Math.PI * 2),
+            direction: false
+        }
+    )
+
+    console.log("add");
 }
