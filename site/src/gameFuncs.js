@@ -45,6 +45,7 @@ function initEvents()
 //loop that carries out all drawing / login processes
 function mainLoop()
 {
+    if(paused) return;
     //clear
     context.clearRect(0, 0, canvas.width, canvas.height);
     //draw main circle
@@ -52,11 +53,14 @@ function mainLoop()
     drawCircle(lineWidth, "#fdd", simSize/2, simSize/2, circleRadius, 0, Math.PI*2, false)
 
     drawCursor();
-    drawBalls();
+
     ballsLogic();
+    drawBalls();
+
     drawHealth();
-    drawTurrets();
+
     turretLogic();
+    drawTurrets();
 }
 
 function spawnBalls()
@@ -70,7 +74,7 @@ function spawnBalls()
 
     //choose random angle
     let angle = (Math.PI * 2) * Math.random();
-    let speed = 100;
+    let speed = 50;
 
     //starting vector is moving at ball speed directly upwards.
     let velocity = {x: 0, y: speed};
@@ -88,11 +92,9 @@ function spawnBalls()
         bounced: false
     });
 
-    console.log(Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y))
-
     //reduces spawn rate to make game harder over timer
     //should change this as its almost unnoticable, simple and boring
-    spawnRate--;
+    //spawnRate--;
     setTimeout(spawnBalls, spawnRate);
 }
 
@@ -110,16 +112,20 @@ function ballsLogic()
     
         //get angle of ball to circle center
         let ballAngle = Math.atan2(ball.pos.y - simSize/2, ball.pos.x - simSize/2);
-  
+
+        //normalize
+        if(ballAngle < 0) ballAngle += Math.PI * 2;
+
         //if ball was blocked
         let blocked = false;
 
         //check for cursor
         if (dist >= circleRadius - ball.radius - lineWidth / 2 &&
-            dist - 3 <= circleRadius - ball.radius - lineWidth / 2)
+            dist - killDistance <= circleRadius - ball.radius - lineWidth / 2)
         {
             //check if cursor blocks the ball
             //if it does, set it to blocked
+
             if(ballAngle < circleSection.max && ballAngle > circleSection.min)
             {
                 blocked = true;
@@ -127,29 +133,55 @@ function ballsLogic()
         }
 
         //check for turrets
-        turrets.forEach(turret =>
-            {
-                //check for cursor
-                if (dist >= (circleRadius * turret.distance) - ball.radius - lineWidth / 2 &&
-                    dist - 3 <= (circleRadius * turret.distance) - ball.radius - lineWidth / 2)
-                {
+        //only check if it is not already blocked by cursor
+        if(!blocked)
+        {
+/*
 
+CURRENTLY AN ERROR
+the turret seems to work when the open area is in the lower half, however when it is in the top ~20% it fails to kill the balls
+
+*/
+
+
+            turrets.forEach(turret =>
+            {
+                //-0.60 | 5.06 | 4.54
+                //2.25 | 7.90 | 4.01
+
+
+
+                //check for correct distance
+                if (dist >= (circleRadius * turret.distance) - ball.radius - lineWidth / 2 &&
+                    dist - killDistance <= (circleRadius * turret.distance) - ball.radius - lineWidth / 2)
+                {
                     //get turret sections
-                    let turretSection = {min: turret.angle - turret.cover/2 * Math.PI * 2, max: turret.angle + turret.cover/2 * Math.PI * 2};
+                    let turretSection = {
+                        min: turret.angle - turret.cover/2 * Math.PI * 2,
+                        max: turret.angle + turret.cover/2 * Math.PI * 2
+                    };
+
+                    console.log(turretSection.min.toFixed(2) + " | " + turretSection.max.toFixed(2) + " | " + ballAngle.toFixed(2));
+                    
+                    //if it is outside turret
+                    ball.color = "#f00"
 
                     //check if turret blocks the ball
-                    //if it set it to blocked
-                    if(ballAngle < turretSection.max && ballAngle > turretSection.min)
+                    if(turretSection.min < ballAngle && turretSection.max > ballAngle)
                     {
-                        blocked = true;
+                        //blocked = true;
+                        //if it is blocked
+                        ball.color = "#0f0"
                     }
+                    else ball.color = "#000"
                 }
             })
+        }
         
-            if(blocked)
-            {
-                balls.splice(index, 1);
-            }
+        if(blocked)
+        {
+            balls.splice(index, 1);
+        }
 
     
     });
@@ -173,6 +205,7 @@ function drawCircle(width, color, posX, posY, radius, radiansMax, radiansMin, so
     context.beginPath();
     context.lineWidth = scaleSize(width);
     context.strokeStyle = color;
+    context.fillStyle = color;
     context.arc(scaleSize(posX), scaleSize(posY), scaleSize(radius), radiansMax, radiansMin);
     solid ? context.fill() : context.stroke();
 }
@@ -187,6 +220,10 @@ function drawCursor()
 
     //set circle section
     circleSection = {min: angle - circleCover/2 * Math.PI * 2, max: angle + circleCover/2 * Math.PI * 2};
+
+    //normalize values to between 0 and 2PI
+    if(circleSection.min < 0) circleSection.min += Math.PI * 2;
+    if(circleSection.max < 0) circleSection.max += Math.PI * 2;
 
     //draw the arc
     //all sizes are scaled
@@ -205,7 +242,8 @@ function drawBalls()
 
 function keyboardInput(e)
 {
-    if(e.key == "a") addTurret(10, 0.4, 0.5, "#f00");
+    if(e.key == "a") addTurret(10, 0.3, 0.5, "#f00");
+    if(e.key == " ") paused = !paused;
 
 }
 
@@ -240,6 +278,12 @@ function turretLogic()
             //get increment depending on direction
             let increment = turret.direction ? turret.speed * 0.001 : turret.speed * -0.001;
             turret.angle += (increment);
+            
+            //dont go negative / over full circle
+            if(turret.angle > Math.PI * 2) turret.angle -= Math.PI * 2;
+            if(turret.angle < 0) turret.angle += Math.PI * 2;
+
+            //console.log("Turret angle: " + turret.angle);
         })
 }
 
@@ -258,4 +302,14 @@ function addTurret(speed, cover, distance, color)
     )
 
     console.log("add");
+}
+
+function drawAngledLine(angle)
+{
+    x1 = scaleSize(simSize / 2);
+    y1 = scaleSize(simSize / 2);
+    r =  500;
+    context.moveTo(x1, y1);
+    context.lineTo(x1 + r * Math.cos(angle), y1 + r * Math.sin(angle));
+    context.stroke();
 }

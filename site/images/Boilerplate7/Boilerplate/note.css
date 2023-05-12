@@ -1,0 +1,16 @@
+/* Changes for mobile */
+@media screen and (max-width: 600px) {
+    main{
+        background-color: brown;
+
+        grid-template-columns: repeat(1, 1fr);
+
+    grid-template-rows: repeat(4, 1fr);
+
+    }
+
+    aside{
+        display: none;
+    }
+    
+}

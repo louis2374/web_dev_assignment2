@@ -1,0 +1,91 @@
+  
+body{
+    margin: 0;
+    padding: 0;
+}
+
+button{
+    height: 10vh;
+    font-size: 3rem;
+}
+
+h1{
+    font-size: 3rem;
+    flex-grow: 1;
+    text-align: center;
+}
+
+section{
+    display: flex;
+    flex-direction: column;
+}
+
+
+main{
+    background-color: beige;
+
+    flex-grow: 1;
+    height: fit-content;
+
+
+}
+header{ 
+    background-color: bisque;
+    padding: 2rem;
+
+    display: flex;
+    flex-direction: row;
+
+    justify-content: center;
+    gap: 2rem;
+
+}
+
+
+
+header > button {
+    background-color: aqua;
+}
+
+
+.box {
+    background-color:azure;
+
+    width: 20rem;
+    height: 20rem;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    transition: background-color 0.4s ease-in-out;
+
+    animation: myAnim 1s ease 0s infinite normal forwards;
+}
+
+.box:hover{
+    background-color: red;
+}
+
+
+.box > p{
+    font-size: 2rem;
+}
+
+
+.linkButton {
+    display: inline-block;
+    border: 1px solid #ccc;
+    background-color: #eee;
+    color: #333;
+    padding: 0.5em 1em;
+    text-decoration: none;
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  
+  .linkButton:hover {
+    background-color: #ccc;
+  }
