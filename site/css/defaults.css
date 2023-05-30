@@ -1,3 +1,4 @@
+/*default to no magins*/
 body
 {
     margin: 0px;
@@ -8,3 +9,26 @@ iframe
     border: 0px;
 }
 
+/*button from a tag*/
+.abutton
+{
+    display: block;
+    padding: 10px 20px;
+    background-color: #333;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+  
+.abutton:hover
+{
+    background-color: #555;
+}
+
+.abutton:active
+{
+    transform:scale(0.9)
+}
+  

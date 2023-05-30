@@ -4,22 +4,23 @@ const simSize = 1000; //simulated size of the game, the games physics, positiona
 const viewport = document.documentElement; //viewport to make code a lil neater
 const circleRadius = simSize * 0.3; //radius of circle
 const lineWidth = 4; //width of the circle
-const updateSpeed = 10; //ticks per second, higher value will cause more jittery gameplay, however ball speed should be preserved.
-const heartImg = new Image(); //heart data so the image doesnt need to be loaded every call
-const killDistance = 100; //number of pixels the ball can go past a cursor or turret and still be killed
+const updateSpeed = 20; //ms per tick, higher value will cause more jittery gameplay, however ball speed should be preserved.
+const heartImg = new Image(); //heart data
+const gunImg = new Image(); //gun data
+const killDistance = 30; //number of pixels the ball can go past a cursor or turret and still be killed
 
 var userX = canvas.height / 2; //coords in which the users cursor rotates around
 var userY = canvas.width / 2;
 var mouseX = 0; //mouse pos updated every frame
 var mouseY = 0; //mouse pos
-var circleCover = 0.03; //percentage of the circle the cursor covers
+var circleCover = 0.04; //percentage of the circle the cursor covers
 var circleSection = {min: 0, max: 0}; //cursor
 var balls = []; //all balls
-var spawnRate = 0; //how often a ball is spawned in ms
+var spawnRate = 2000; //how often a ball is spawned in ms
 var ballSpawning = true; //determins whether balls should spawn
-var playerHealth = 5 //how much health the player starts with, will be changed with different difficulty settings
 var turrets = [] //all turrets
-var paused = false; //whether to pause the game, the main loop is paused, and the canvas keep the last frame
+var paused = false; //whether to pause the game
+var baseSpeed = 100;
 
 var playerData = //data about the player
 {

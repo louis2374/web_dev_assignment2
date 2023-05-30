@@ -1,29 +1,9 @@
-/*
-const canvas = document.getElementById('canvasFrame'); //canvas
-const context = canvas.getContext('2d'); //canvas context
-const simSize = 1000; //simulated size of the game, the games physics, positiona and size are based off this, and scaled to match the canvas size
-const viewport = document.documentElement; //viewport to make code a lil neater
-const circleRadius = simSize * 0.3; //radius of circle
-const lineWidth = 4; //width of the circle
-const updateSpeed = 10; //ticks per second, higher value will cause more jittery gameplay, however ball speed should be preserved.
 
-var userX = canvas.height / 2;
-var userY = canvas.width / 2;
-var mouseX = 0; //mouse pos
-var mouseY = 0; //mouse pso
-var circleCover = 0.03; //percentage of the circle the cursor covers
-var circleSection = {min: 0, max: 0}; //cursor
-var balls = []; //all balls
-var spawnRate = 1000; //how often a ball is spawned in ms
-var ballSpawning = true; //determins whether balls should spawn
-
-var points = [
-]
-*/
 function init()
 {
     //load heart
     heartImg.src = "../images/heart.png";
+    gunImg.src = "../images/gun.png";
 
 
     resizeCanvas();
@@ -45,9 +25,9 @@ function initEvents()
 //loop that carries out all drawing / login processes
 function mainLoop()
 {
-    if(paused) return;
     //clear
     context.clearRect(0, 0, canvas.width, canvas.height);
+    
     //draw main circle
     //non cursor area
     drawCircle(lineWidth, "#fdd", simSize/2, simSize/2, circleRadius, 0, Math.PI*2, false)
@@ -58,48 +38,58 @@ function mainLoop()
     drawBalls();
 
     drawHealth();
+    drawGun();
 
-    turretLogic();
-    drawTurrets();
-}
-
-function spawnBalls()
-{
-    //if no balls should spawn, dont modify spawn rate and just return this function
-    if(!ballSpawning)
+    //check health
+    if(playerData.health <= 0)
     {
-        setTimeout(spawnBalls, spawnRate);
-        return;
+        paused = true;
+        if(playerData.score > playerData.high_score) playerData.high_score = playerData.score
+
+        displayMenu();
     }
 
-    //choose random angle
+    //turretLogic();
+    //drawTurrets();
+}
+
+function spawnBalls() {
+    // if no balls should spawn, don't modify spawn rate and just return this function
+    if (!ballSpawning || paused) return setTimeout(spawnBalls, spawnRate);
+
+    
+
+    // choose random angle
     let angle = (Math.PI * 2) * Math.random();
-    let speed = 50;
+    let speed = baseSpeed + playerData.score;
 
-    //starting vector is moving at ball speed directly upwards.
-    let velocity = {x: 0, y: speed};
 
-    //rotate this vector by angle
+    // starting vector is moving at ball speed directly upwards.
+    let velocity = { x: 0, y: speed };
+
+    // rotate this vector by angle
     velocity.x = velocity.x * Math.cos(angle) - velocity.y * Math.sin(angle);
     velocity.y = velocity.x * Math.sin(angle) + velocity.y * Math.cos(angle);
 
-    balls.push(
-    {
+    //always moving right
+    if(velocity.x > 0) velocity.x *= -2;
+
+    balls.push({
         radius: 10,
-        pos: {x: simSize / 2, y: simSize / 2},
-        velocity: {x: velocity.x, y: velocity.y},
+        pos: { x: 7 * simSize / 10, y: simSize / 2 },
+        velocity: { x: velocity.x, y: velocity.y },
         color: "#2a2",
         bounced: false
     });
 
-    //reduces spawn rate to make game harder over timer
-    //should change this as its almost unnoticable, simple and boring
-    //spawnRate--;
-    setTimeout(spawnBalls, spawnRate);
+    setTimeout(spawnBalls, (spawnRate * Math.random() )+ 0.5 );
 }
+
 
 function ballsLogic()
 {
+    if(paused) return;
+
     balls.forEach((ball, index) => {
         //move ball
         //velocity should be in pixels per second at 100% simsize
@@ -130,20 +120,23 @@ function ballsLogic()
             {
                 blocked = true;
             }
+            else
+            {
+                playerData.health-=1;
+                balls.splice(index, 1);
+            }
         }
 
         //check for turrets
         //only check if it is not already blocked by cursor
         if(!blocked)
         {
+
+
+//CURRENTLY AN ERROR
+//I have been trying to fix a small bug with the turret for ages, i need to come back and look at it at another time
+//not sure if i will add them to the project as it has taken a very long time just for this bug.
 /*
-
-CURRENTLY AN ERROR
-the turret seems to work when the open area is in the lower half, however when it is in the top ~20% it fails to kill the balls
-
-*/
-
-
             turrets.forEach(turret =>
             {
                 //-0.60 | 5.06 | 4.54
@@ -161,7 +154,8 @@ the turret seems to work when the open area is in the lower half, however when i
                         max: turret.angle + turret.cover/2 * Math.PI * 2
                     };
 
-                    console.log(turretSection.min.toFixed(2) + " | " + turretSection.max.toFixed(2) + " | " + ballAngle.toFixed(2));
+
+                    console.log("Turret min: " + turretSection.min.toFixed(2) + " | Turret max: " + turretSection.max.toFixed(2) + " | Ball Angle" + ballAngle.toFixed(2));
                     
                     //if it is outside turret
                     ball.color = "#f00"
@@ -176,14 +170,16 @@ the turret seems to work when the open area is in the lower half, however when i
                     else ball.color = "#000"
                 }
             })
+
+*/
         }
         
         if(blocked)
         {
             balls.splice(index, 1);
+            playerData.score+=1;
         }
 
-    
     });
 }
 
@@ -212,6 +208,8 @@ function drawCircle(width, color, posX, posY, radius, radiansMax, radiansMin, so
 
 function drawCursor()
 {
+    if(paused) return;
+
     //height = width
     let h = canvas.height / 2;
     
@@ -242,8 +240,16 @@ function drawBalls()
 
 function keyboardInput(e)
 {
-    if(e.key == "a") addTurret(10, 0.3, 0.5, "#f00");
-    if(e.key == " ") paused = !paused;
+    if(e.key == "a") addTurret(1, 0.3, 0.5, "#f00");
+    if(e.key == " ")
+    {
+        if(playerData.health > 0) paused = !paused;
+        else
+        {
+            reset();
+            paused = false;
+        }
+    }
 
 }
 
@@ -276,7 +282,7 @@ function turretLogic()
     turrets.forEach(turret =>
         {
             //get increment depending on direction
-            let increment = turret.direction ? turret.speed * 0.001 : turret.speed * -0.001;
+            let increment = turret.direction ? turret.speed * (updateSpeed / 1000) : turret.speed * -(updateSpeed / 1000);
             turret.angle += (increment);
             
             //dont go negative / over full circle
@@ -312,4 +318,46 @@ function drawAngledLine(angle)
     context.moveTo(x1, y1);
     context.lineTo(x1 + r * Math.cos(angle), y1 + r * Math.sin(angle));
     context.stroke();
+}
+
+function drawGun()
+{
+    let gunPos = { x: 2 * simSize / 3, y: simSize / 2 };
+    let gunWidth = 300;
+    let gunHeight = gunWidth * (gunImg.height / gunImg.width);
+    
+    context.drawImage(gunImg, scaleSize(gunPos.x), scaleSize(gunPos.y - (0.5 * gunHeight)), scaleSize(gunWidth), scaleSize(gunHeight));
+}
+
+function reset()
+{
+    //reset stats
+    playerData.score = 0;
+    playerData.health = 5;
+
+    //remove all balls
+    balls = [];
+}
+
+function displayMenu()
+{
+    //score
+    context.fillStyle = "#000";
+    context.font = "20px Arial";
+    context.fillText("Score: " + playerData.score, 10, 30);
+
+    //you died
+    context.fillStyle = "#f00";
+    context.font = "30px Arial";
+    context.fillText("You Died", canvas.width / 2 - 60, canvas.height / 2 - 20);
+
+    //play again
+    context.fillStyle = "#000";
+    context.font = "20px Arial";
+    context.fillText("Press Space to Play Again", canvas.width / 2 - 120, canvas.height / 2 + 20);
+
+    //high score
+    context.fillStyle = "#000";
+    context.font = "20px Arial";
+    context.fillText("High Score: " + playerData.high_score, 10, canvas.height - 30);
 }

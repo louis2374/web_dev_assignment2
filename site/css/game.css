@@ -2,3 +2,8 @@
 {
     background-color: aliceblue;
 }
+
+html
+{
+    overflow: hidden;
+}
